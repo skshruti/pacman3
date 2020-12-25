@@ -13,6 +13,7 @@
 
 
 from captureAgents import CaptureAgent
+import distanceCalculator
 import random, time, util
 from game import Directions
 import game
@@ -83,6 +84,50 @@ class DummyAgent(CaptureAgent):
     Picks among actions randomly.
     """
     actions = gameState.getLegalActions(self.index)
+    invaderDist=99999
+    evaluateActions=[]
+    bestAction=actions[0]
+    for action in actions:
+      successor = gameState.generateSuccessor(self.index, action)
+      if successor.isOnRedTeam(self.index):
+        enemies = [successor.getAgentState(i) for i in self.getOpponents(successor)]
+        invaders = [a for a in enemies if a.isPacman and a.getPosition() != None]
+        ghosts = [a for a in enemies if (not a.isPacman) and a.getPosition() != None]
+        #if pacman on our side, eat him
+        if len(invaders)>0:
+          invaderDistances = [self.getMazeDistance(successor.getAgentPosition(self.index), a.getPosition()) for a in invaders]
+          if min(invaderDistances)<invaderDist:
+            bestAction = action
+            invaderDist = min(invaderDistances)
+        else:
+          ghostDistances = [self.getMazeDistance(successor.getAgentPosition(self.index), a.getPosition()) for a in ghosts]
+          ghostDistance = sum(ghostDistances)
+          blueFoods = successor.getBlueFood().asList()
+          foodDistances = [self.getMazeDistance(successor.getAgentPosition(self.index), food) for food in blueFoods]
+          foodDistance = sum(foodDistances)
+          print(foodDistance, ghostDistance)
+          me = successor.getAgentState(self.index)
+          if me.isPacman:
+            #if I am pacman, eat food and avoid ghosts
+            evaluateActions.append((action,(1/(foodDistance))*ghostDistance))
+          else:
+            #else food ke paas jao
+            evaluateActions.append((action,1/foodDistance))
+
+    if invaderDist != 99999 and bestAction != Directions.STOP:
+      print(invaderDist, bestAction)
+      print("han")
+      return bestAction
+    else:
+      print("what")
+      bestValue=-99999
+      print(evaluateActions)
+      for evaluateAction in evaluateActions:
+        if evaluateAction[1]>bestValue:
+          bestAction = evaluateAction[0]
+          bestValue = evaluateAction[1]
+      return bestAction
+
 
     '''
     You should change this in your own agent.
